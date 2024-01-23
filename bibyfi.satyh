@@ -320,6 +320,15 @@ end = struct
   in
     f splited
 
+  let-rec get-last-name name =
+  let splitter = regexp-of-string `[ ]+` in
+  let splited = split-on-regexp splitter name in
+  let-rec f name = match name with
+    | [] -> ` `
+    | [(_, n)] -> n
+    | (_, n) :: last -> f last
+  in
+    f splited
 
   let join-authors sep-for-double sep sep-last authors =
     match List.reverse authors with
@@ -444,7 +453,7 @@ end = struct
         in
           numebers-str ^ fullcites-str))
     in
-      inline-skip 2pt ++ read-inline ctx (embed-string (`[` ^ sacc ^ `]`))
+      inline-skip 2pt ++ read-inline ctx (embed-string (`(` ^ sacc ^ `)`))
 
   let-rec sort-same f src refs =
     let pick label lst = lst |> List.filter (fun l -> f l label) |> List.nth 0 in
@@ -485,7 +494,7 @@ end = struct
      | _ -> (
       authors
       |> Option.map (fun (authors, year) -> (
-        let authors = List.map shrink-name authors |> List.reverse in
+        let authors = List.map get-last-name authors in
         match authors with
         | [] -> ` `
         | n1 :: [] -> n1
