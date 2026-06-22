@@ -19,7 +19,7 @@ homepage: "https://github.com/namachan10777/BiByFi"
 bug-reports: "https://github.com/namachan10777/BiByFi/issues"
 dev-repo: "git+https://github.com/namachan10777/BiByFi.git"
 depends: [
-  "satysfi" {>= "0.0.3" & < "0.0.5"}
+  "satysfi" {>= "0.0.3" & < "0.1.0"}
   "satyrographos" {>= "0.0.2.3" & < "0.0.3"}
 ]
 build: [ ]
