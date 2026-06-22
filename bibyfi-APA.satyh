@@ -1,0 +1,187 @@
+@import: bibyfi
+
+@require: vdecoset
+
+
+type bibyfi-apa-cfg = (|
+  hanging-indent : length;
+|)
+
+module BiByFiAPA : sig
+  val default-config : bibyfi-apa-cfg
+  val render : bibyfi-apa-cfg -> context -> bibyfi-item -> block-boxes
+  val theme : bibyfi-apa-cfg -> context -> int -> bibyfi-item -> block-boxes
+end = struct
+
+  let default-config = (|
+    hanging-indent = 0pt;
+  |)
+
+  let font-ratio-latin = 1.
+  let italic-font = (`Junicode-it`, font-ratio-latin, 0.)
+
+  let-inline ctx \italic it =
+    read-inline (ctx |> set-font Latin italic-font) it
+
+  let text s = embed-string s
+
+  let authors names =
+    BiByFi.join-authors {,\ } {,\ } {&\ } (List.map text names)
+
+  let ends-with-period s =
+    let len = string-length s in
+    if len == 0
+    then false
+    else string-same (string-sub s (len - 1) 1) `.`
+
+  let author-elem names =
+    let it = authors names in
+    match List.reverse names with
+    | last :: _ ->
+      if ends-with-period last
+      then Some(|
+        not-tail = fun _ -> it;
+        tail = fun _ -> it;
+      |)
+      else BiByFi.lift-elem it
+    | [] -> BiByFi.lift-elem it
+
+  let optional-author-elem names =
+    match names with
+    | Some(names) -> author-elem names
+    | None -> None
+
+  let year y =
+    text (`(` ^ y ^ `)`)
+
+  let optional-year y =
+    match y with
+    | Some(y) -> year y
+    | None -> {(n.d.)}
+
+  let pages (first, last) =
+    text (first ^ `–` ^ last)
+
+  let optional-text value =
+    Option.map text value
+
+  let title-elem title =
+    BiByFi.lift-elem (text title)
+
+  let italic-elem it =
+    Some(|
+      not-tail = fun sep -> {\italic{#it;}#sep;};
+      tail = fun period -> {\italic{#it;}#period;};
+    |)
+
+  let join elements =
+    BiByFi.join-elements {.} {.} {\ } elements
+
+  let mk-volume-number volume number =
+    match (volume, number) with
+    | (Some(v), Some(n)) ->
+      let it-v = text v in
+      let it-n = text n in
+      Some({\italic{#it-v;}(#it-n;)})
+    | (Some(v), None) ->
+      let it-v = text v in
+      Some({\italic{#it-v;}})
+    | (None, Some(n)) -> Some(text (`(` ^ n ^ `)`))
+    | (None, None) -> None
+
+  let mk-article r =
+    join [
+      author-elem r#author;
+      BiByFi.lift-elem (year r#year);
+      title-elem r#title;
+      italic-elem (text r#journal);
+      BiByFi.map-elem (mk-volume-number r#volume r#number);
+      BiByFi.lift-elem (pages r#pages);
+      BiByFi.map-elem (optional-text r#note);
+    ]
+
+  let mk-inproceedings r =
+    let publisher = match (r#publisher, r#address) with
+      | (Some(publisher), Some(address)) ->
+        Some(text (publisher ^ `, `# ^ address))
+      | (Some(publisher), None) -> Some(text publisher)
+      | (None, Some(address)) -> Some(text address)
+      | (None, None) -> None
+    in
+    join [
+      author-elem r#author;
+      BiByFi.lift-elem (year r#year);
+      title-elem r#title;
+      italic-elem (text r#booktitle);
+      BiByFi.map-elem (Option.map pages r#pages);
+      BiByFi.map-elem publisher;
+      BiByFi.map-elem (optional-text r#note);
+    ]
+
+  let mk-book r =
+    let edition = Option.map (fun edition -> text (`(` ^ edition ^ `)`)) r#edition in
+    join [
+      author-elem r#author;
+      BiByFi.lift-elem (year r#year);
+      italic-elem (text r#title);
+      BiByFi.map-elem edition;
+      BiByFi.lift-elem (text r#publisher);
+      BiByFi.map-elem (optional-text r#note);
+    ]
+
+  let mk-techreport r =
+    let report = match (r#typeof, r#number) with
+      | (Some(kind), Some(number)) ->
+        Some(text (kind ^ #` No. `# ^ number))
+      | (Some(kind), None) -> Some(text kind)
+      | (None, Some(number)) -> Some(text (`Report No. `# ^ number))
+      | (None, None) -> None
+    in
+    join [
+      author-elem r#author;
+      BiByFi.lift-elem (year r#year);
+      italic-elem (text r#title);
+      BiByFi.map-elem report;
+      BiByFi.lift-elem (text r#institution);
+      BiByFi.map-elem (optional-text r#note);
+    ]
+
+  let mk-misc r =
+    join [
+      optional-author-elem r#author;
+      BiByFi.lift-elem (optional-year r#year);
+      BiByFi.map-elem (Option.map text r#title);
+      BiByFi.map-elem (optional-text r#howpublished);
+      BiByFi.map-elem (optional-text r#note);
+    ]
+
+  let unsupported =
+    {Unsupported\ bibliography\ item.}
+
+  let item-text item =
+    match item with
+    | Article(r) -> mk-article r
+    | Book(r) -> mk-book r
+    | InProceedings(r) -> mk-inproceedings r
+    | TechReport(r) -> mk-techreport r
+    | Misc(r) -> mk-misc r
+    | WildCard(it) -> it
+    | _ -> unsupported
+
+  let make-entry cfg ctx it =
+    let ib-main = read-inline ctx it in
+    let ib =
+      inline-skip (0pt -' cfg#hanging-indent)
+        ++ ib-main
+        ++ inline-fil
+    in
+    let pads = (cfg#hanging-indent, 0pt, 0pt, 0pt) in
+    block-frame-breakable ctx pads VDecoSet.empty
+      (fun ctx -> line-break true true ctx ib)
+
+  let render cfg ctx item =
+    make-entry cfg ctx (item-text item)
+
+  let theme cfg ctx _ item =
+    render cfg ctx item
+end

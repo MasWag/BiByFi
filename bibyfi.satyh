@@ -219,6 +219,7 @@ type bib-config = (|
 
 module BiByFi: sig
   direct \cite : [string list] inline-cmd
+  direct +bibentry : [context -> bibyfi-item -> block-boxes; bibyfi-item] block-cmd
   direct +makebibliography : [bib-config?; context -> int -> bibyfi-item -> block-boxes; (string * bibyfi-item) list] block-cmd
   direct \BiByFi : [] inline-cmd
 
@@ -445,6 +446,9 @@ end = struct
           numebers-str ^ fullcites-str))
     in
       inline-skip 2pt ++ read-inline ctx (embed-string (`[` ^ sacc ^ `]`))
+
+  let-block ctx +bibentry theme item =
+    theme ctx item
 
   let-rec sort-same f src refs =
     let pick label lst = lst |> List.filter (fun l -> f l label) |> List.nth 0 in

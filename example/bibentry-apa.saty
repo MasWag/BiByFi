@@ -1,0 +1,32 @@
+@require: stdjareport
+@require: bibyfi/bibyfi
+@require: bibyfi/bibyfi-APA
+
+let apa-renderer = BiByFiAPA.render BiByFiAPA.default-config in
+
+document(|
+  title = {Section-local bibliography entry};
+  author = {BiByFi};
+|) '<
+  +section{Robust Semantics}<
+    +bibentry(apa-renderer)(
+      Article((|
+        author = [`Donzé, A.`; `Maler, O.`];
+        title = `Robust satisfaction of temporal logic over real-valued signals`;
+        journal = `Formal Modeling and Analysis of Timed Systems`;
+        year = `2010`;
+        pages = (`92`, `106`);
+        volume = None;
+        number = None;
+        month = None;
+        note = Some(`doi:10.1007/978-3-642-15297-9_9`);
+        key = None;
+      |))
+    );
+
+    +p{
+      This section starts with its relevant bibliography entry.
+      No citation log or global bibliography is required.
+    }
+  >
+>
