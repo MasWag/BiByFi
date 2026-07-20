@@ -54,15 +54,15 @@ end = struct
     | None -> None
 
   let year y =
-    text (`(` ^ y ^ `)`)
+    text y
 
   let optional-year y =
     match y with
     | Some(y) -> year y
-    | None -> {(n.d.)}
+    | None -> {n.d.}
 
   let pages (first, last) =
-    text (first ^ `–` ^ last)
+    text (`p. ` ^ first ^ `–` ^ last)
 
   let optional-text value =
     Option.map text value
@@ -76,15 +76,29 @@ end = struct
       tail = fun period -> {\italic{#it;}#period;};
     |)
 
+  let booktitle-elem booktitle =
+    let it = text booktitle in
+    Some(|
+      not-tail = fun sep -> {In: \italic{#it;}#sep;};
+      tail = fun period -> {In: \italic{#it;}#period;};
+    |)
+
   let join elements =
     BiByFi.join-elements {.} {.} {\ } elements
+
+  let map-comma-elem e =
+    BiByFi.custom-sep {,} {.}
+      (Option.map (fun e -> (|
+        not-tail = fun sep -> {#e;#sep;};
+        tail = fun period -> {#e;#period;};
+      |)) e)
 
   let mk-volume-number volume number =
     match (volume, number) with
     | (Some(v), Some(n)) ->
       let it-v = text v in
       let it-n = text n in
-      Some({\italic{#it-v;}(#it-n;)})
+      Some({\italic{#it-v;} (#it-n;)})
     | (Some(v), None) ->
       let it-v = text v in
       Some({\italic{#it-v;}})
@@ -94,9 +108,10 @@ end = struct
   let mk-article r =
     join [
       author-elem r#author;
-      BiByFi.lift-elem (year r#year);
       title-elem r#title;
-      italic-elem (text r#journal);
+      let journal-it = (text r#journal) in
+      map-comma-elem (Some {\italic{#journal-it;}});
+      map-comma-elem (Some (year r#year));
       BiByFi.map-elem (mk-volume-number r#volume r#number);
       BiByFi.lift-elem (pages r#pages);
       BiByFi.map-elem (optional-text r#note);
@@ -112,11 +127,11 @@ end = struct
     in
     join [
       author-elem r#author;
-      BiByFi.lift-elem (year r#year);
       title-elem r#title;
-      italic-elem (text r#booktitle);
+      booktitle-elem r#booktitle;
+      map-comma-elem publisher;
+      BiByFi.lift-elem (year r#year);
       BiByFi.map-elem (Option.map pages r#pages);
-      BiByFi.map-elem publisher;
       BiByFi.map-elem (optional-text r#note);
     ]
 
