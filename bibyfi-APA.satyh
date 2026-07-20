@@ -10,7 +10,9 @@ type bibyfi-apa-cfg = (|
 module BiByFiAPA : sig
   val default-config : bibyfi-apa-cfg
   val render : bibyfi-apa-cfg -> context -> bibyfi-item -> block-boxes
+  val render-inline : bibyfi-apa-cfg -> context -> bibyfi-item -> inline-boxes
   val theme : bibyfi-apa-cfg -> context -> int -> bibyfi-item -> block-boxes
+  val theme-inline : bibyfi-apa-cfg -> context -> int -> bibyfi-item -> inline-boxes
 end = struct
 
   let default-config = (|
@@ -179,9 +181,26 @@ end = struct
     block-frame-breakable ctx pads VDecoSet.empty
       (fun ctx -> line-break true true ctx ib)
 
+  let make-entry cfg ctx it =
+    let ib-main = read-inline ctx it in
+    let ib =
+      inline-skip (0pt -' cfg#hanging-indent)
+        ++ ib-main
+        ++ inline-fil
+    in
+    let pads = (cfg#hanging-indent, 0pt, 0pt, 0pt) in
+    block-frame-breakable ctx pads VDecoSet.empty
+      (fun ctx -> line-break true true ctx ib)
+
   let render cfg ctx item =
     make-entry cfg ctx (item-text item)
 
+  let render-inline cfg ctx item =
+    read-inline ctx (item-text item)
+
   let theme cfg ctx _ item =
     render cfg ctx item
+
+  let theme-inline cfg ctx _ item =
+    read-inline ctx (item-text item)
 end
